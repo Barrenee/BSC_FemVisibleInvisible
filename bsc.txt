@@ -1,0 +1,42 @@
+CALIOPE: información de calidad del aire a un km de resolución
+	-> No consigue detectar en alta resolución picos de contaminación en diferentes zonas (calles, industria, etc.)
+
+DATOS: preprocesados en columnas (en teoría) 
+	-> Estaciones de fondo: miden calidad del aire general, demuestran modelos dinámicos generales
+	-> Estaciones de tránsito: miden la calidad en zonas exactas
+	-> No hay tantas estaciones, pero las hay
+
+OBJETIVO: medir niveles de NO2 en alta resolución, hora a hora, en todo cataluña.
+	-> No tiene por qué ser visualizable, aunque estaría bien
+	
+	-> Cómo se VALIDA: Han escondido 4 estaciones con datos y validarán así 
+		- Hay 50 estaciones que miden  
+
+ELLOS de momento: utilizan un modelo físico para poder predecir con mucha resolución
+
+-----------------------------------------------------------
+
+DATOS en profundidad:
+Variable Target: Estaciones de observación de concentración de NO2 (tb hay más variables)
+
+Variables:
+ - Datos de un año de varios contaminantes de CALIOPE
+ - Uso de la tierra (alta resolución 10-30m del uso que se le da a las tierras)
+ - Shapefiles de tipos de carreteras.
+ - Intensidad media de tráfico (IMD) de las carreteras de cataluña (WARNING: Igual esta variable no está perfectamente actualizado/medido
+ - Emisiones de tráfico (365 archivos)
+ - Datos de satélites => Problema, da datos de todo el aire que hay desde el satélite hasta la tierra, peor resolución y queremos datos a nivel de la tierra, fotos diarias) (3.5 km2 o aSí
+ - Puntos de contaminación de la industria
+ - Densidad de población (1km2)
+ - Valores de NO2 corregidos en Barcelona (estos son ya datos extraídos y procesados a partir de variables como las que nos dan). No es observacional, pero puede ser útil
+
+------------------------------------------------------------
+Lo que ellos hacen?
+ - Una interpolación de datos con los residuos de una regresión de las 
+ 
+------------------------------------------------------------
+EVALUATION
+
+ - Cualitativo (40%): resolución espacial, métodos originales, visualización y cobertura en cataluña
+ - Cuantitativo (60%): Accuracy de la predicción
+ 
