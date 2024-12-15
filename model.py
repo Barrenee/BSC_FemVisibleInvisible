@@ -67,7 +67,7 @@ class RegionsDataset(Dataset):
         static_features = self.static_features[bbox_key]
 
         # Combine features
-        no2_conc = torch.tensor(region_data['features']['no2_conc'], dtype=torch.float32)
+        no2_conc = torch.tensor(region_data['features']['no2_conc'], dtype=torch.float32) * 100
         pollutant_uk = torch.tensor(region_data['features']['pollutant_uk'], dtype=torch.float32)
 
         input_features = torch.stack([
@@ -163,9 +163,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         running_loss = 0.0
         for inputs, targets in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]"):
             inputs, targets = inputs.to(device), targets.to(device)
+            targets = targets.unsqueeze(1)
 
             optimizer.zero_grad()
             outputs = model(inputs)
+
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
@@ -181,6 +183,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         with torch.no_grad():
             for inputs, targets in tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]"):
                 inputs, targets = inputs.to(device), targets.to(device)
+                targets = targets.unsqueeze(1)
                 outputs = model(inputs)
                 loss = criterion(outputs, targets)
                 running_val_loss += loss.item() * inputs.size(0)
@@ -197,8 +200,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
 def main():
     data_dir = 'processed_regions'
     static_features_file = os.path.join(data_dir, 'regions_20230101_0.json')
-    batch_size = 4
-    num_epochs = 2
+    batch_size = 32
+    num_epochs = 5
     learning_rate = 1e-4
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

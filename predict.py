@@ -126,17 +126,25 @@ def extract_value_with_crs_transformation(predictions, target_lon, target_lat, g
     transformer = Transformer.from_crs(target_crs, grid_crs, always_xy=True)
     target_x, target_y = transformer.transform(target_lon, target_lat)
 
-    print(f"Transformed coordinates: ({target_x}, {target_y}) in CRS {grid_crs}")
+    #target_x, target_y = target_lon, target_lat
 
+    print(f"Transformed coordinates: ({target_x}, {target_y}) in CRS {grid_crs}")
+    
 
     # 392867.50915097236 393867.50915097236
+
+
+
+
 
 
     # Determine the bounding box of the grid cell containing the target point
     for bbox_x in grid_xs:
         for bbox_y in grid_ys:
-            bbox_min_x, bbox_min_y = bbox_x, bbox_y
-            bbox_max_x, bbox_max_y = bbox_x + grid_size_m, bbox_y + grid_size_m
+            bbox_min_x, bbox_min_y = bbox_x  - grid_size_m // 2, bbox_y  - grid_size_m // 2
+            bbox_max_x, bbox_max_y = bbox_x + grid_size_m // 2, bbox_y +  grid_size_m // 2
+
+            print( bbox_min_x, bbox_min_y )
             
             # Check if target_point is within this grid cell
             if bbox_min_x <= target_x < bbox_max_x and bbox_min_y <= target_y < bbox_max_y:
@@ -166,19 +174,37 @@ def extract_value_with_crs_transformation(predictions, target_lon, target_lat, g
     raise ValueError("Target coordinates are not within the prediction grid.")
 
 
-target_lon = 2.009802
-target_lat = 41.39216
-target_lon = 1.191975
-target_lat = 41.11588
+#target_lon = 2.009905 # ->  5.0566325187683105
+#target_lat = 41.39416
 
+#target_lon = 1.191975 # -> 27.90164947509765
+#target_lat = 41.11588
+
+target_lon = 2.237875 # -> 27.904598236083984
+target_lat = 41.44398
+
+
+#target_lon = 2.082141 # -> 5.087265491485596
+#target_lat = 41.32177
 #1.191975	41.11588
 #2.237875	41.44398
 #2.082141	41.32177
 
 
 
+# 417217.85, 4582765.04
+# 348205.50, 4553196.17
+# 436335.91, 4588325.22
+
+#target_lon = 417217.85
+#target_lat = 4582765.04
+
+# 423182.8530209856 4574883.873318076 -> 1.4914034605026245
+
+
+
 target_crs = "EPSG:4326"  # WGS84
-grid_crs = "EPSG:32631"
+grid_crs = "EPSG:25831"
 
 
 def create_prediction_data(no2_file, roads_grid, elevation_grid, grid_size_m=1000, sub_resolution_m=25, hour=0):
@@ -208,9 +234,10 @@ def create_prediction_data(no2_file, roads_grid, elevation_grid, grid_size_m=100
     elevation_grid.sindex
 
     # Grid creation
-    min_x, min_y, max_x, max_y = no2_gdf.total_bounds
-    grid_xs = np.arange(min_x, max_x + grid_size_m, grid_size_m)
-    grid_ys = np.arange(min_y, max_y + grid_size_m, grid_size_m)
+    min_x, min_y, max_x, max_y = roads_grid.total_bounds
+
+    grid_xs = np.arange(min_x - grid_size_m // 2, max_x + grid_size_m // 2, grid_size_m)
+    grid_ys = np.arange(min_y - grid_size_m // 2, max_y + grid_size_m // 2, grid_size_m)
     cell_xs = np.arange(0, grid_size_m, sub_resolution_m)
     cell_ys = np.arange(0, grid_size_m, sub_resolution_m)
 
@@ -232,19 +259,7 @@ def create_prediction_data(no2_file, roads_grid, elevation_grid, grid_size_m=100
     })
 
 
-    predicted_value = extract_value_with_crs_transformation(
-        predictions=prediction_data,
-        target_lon=target_lon,
-        target_lat=target_lat,
-        grid_xs=grid_xs,
-        grid_ys=grid_ys,
-        grid_size_m=1000,
-        sub_resolution_m=25,
-        target_crs=target_crs,
-        grid_crs=grid_crs
-    )
-
-    return predicted_value
+    return prediction_data
 
 # --- Prediction Function ---
 
@@ -262,8 +277,10 @@ def predict(model, prediction_data, device):
                 torch.tensor(region['features']['has_road'], dtype=torch.float32),
                 torch.tensor(region['features']['elevation'], dtype=torch.float32),
                 torch.tensor(region['features']['imd_total'], dtype=torch.float32),  # Assuming you have this
-                torch.tensor(region['features']['no2_conc'], dtype=torch.float32)
+                torch.tensor(region['features']['no2_conc'], dtype=torch.float32) * 100
             ], dim=0).unsqueeze(0).to(device)  # Add batch dimension
+
+            print(region['features']['no2_conc'])
 
             # Make prediction
             output = model(input_tensor)
@@ -272,18 +289,29 @@ def predict(model, prediction_data, device):
             # Store prediction
             bbox_key = str((region['bbox_x'], region['bbox_y']))
             predictions[bbox_key] = output.tolist()
-            print("KEEYYY", bbox_key)
-            break
 
-    return predictions
+
+    predicted_value = extract_value_with_crs_transformation(
+        predictions=predictions,
+        target_lon=target_lon,
+        target_lat=target_lat,
+        grid_xs=[region['bbox_x'] for region in prediction_data],
+        grid_ys=[region['bbox_y'] for region in prediction_data],
+        grid_size_m=1000,
+        sub_resolution_m=25,
+        target_crs=target_crs,
+        grid_crs=grid_crs
+    )
+
+    return predicted_value
 
 # --- Main Function ---
 
 def main():
     # Paths and parameters
     no2_files = sorted(glob('../NO2/sconcno2_*.nc'))  # Update with your path
-    roads_grid_file = 'pred1roads.geojson'
-    elevation_grid_file = 'pred1_with_elevation.geojson'
+    roads_grid_file = 'pred3roads.geojson'
+    elevation_grid_file = 'pred3_with_elevation.geojson'
     model_path = 'trained_model.pth'
     output_dir = 'predictions'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -292,12 +320,19 @@ def main():
     roads_grid = gpd.read_file(roads_grid_file)
     elevation_grid = gpd.read_file(elevation_grid_file)
 
+    roads_grid = roads_grid.to_crs("EPSG:25831")
+    elevation_grid= elevation_grid.to_crs("EPSG:25831")
+
+    #print(roads_grid)
+
     # Load the trained model
     in_channels = 4
     out_channels = 1
     model = UNet40x40(in_channels, out_channels)
     model.load_state_dict(torch.load(model_path))
     model.to(device)
+
+    all_predictions = []
 
     # Make predictions for each hour of each day
     os.makedirs(output_dir, exist_ok=True)
@@ -314,12 +349,15 @@ def main():
 
             # Make predictions
             predictions = predict(model, prediction_data, device)
-            print(predictions)
+            all_predictions.append(predictions)
+        break
 
             # Save predictions (you might want to customize the format)
-            output_file = os.path.join(output_dir, f"predictions_{date_str}_{hour}.json")
-            with open(output_file, 'w') as f:
-                json.dump(predictions, f)
+
+
+    output_file = os.path.join(output_dir, f"predictions_complete3.json")
+    with open(output_file, 'w') as f:
+        json.dump(all_predictions, f)
 
 if __name__ == "__main__":
     main()
