@@ -128,6 +128,10 @@ def extract_value_with_crs_transformation(predictions, target_lon, target_lat, g
 
     print(f"Transformed coordinates: ({target_x}, {target_y}) in CRS {grid_crs}")
 
+
+    # 392867.50915097236 393867.50915097236
+
+
     # Determine the bounding box of the grid cell containing the target point
     for bbox_x in grid_xs:
         for bbox_y in grid_ys:
@@ -135,7 +139,6 @@ def extract_value_with_crs_transformation(predictions, target_lon, target_lat, g
             bbox_max_x, bbox_max_y = bbox_x + grid_size_m, bbox_y + grid_size_m
             
             # Check if target_point is within this grid cell
-            print(bbox_min_x, bbox_max_x)
             if bbox_min_x <= target_x < bbox_max_x and bbox_min_y <= target_y < bbox_max_y:
                 bbox_key = str((bbox_x, bbox_y))
                 print(f"Target point is in grid cell with bbox {bbox_key}")
@@ -165,6 +168,14 @@ def extract_value_with_crs_transformation(predictions, target_lon, target_lat, g
 
 target_lon = 2.009802
 target_lat = 41.39216
+target_lon = 1.191975
+target_lat = 41.11588
+
+#1.191975	41.11588
+#2.237875	41.44398
+#2.082141	41.32177
+
+
 
 target_crs = "EPSG:4326"  # WGS84
 grid_crs = "EPSG:32631"
@@ -214,7 +225,6 @@ def create_prediction_data(no2_file, roads_grid, elevation_grid, grid_size_m=100
 
     prediction_data = []
 
-    print(grid_xs)
     prediction_data.append({
         'bbox_x': grid_xs[1],
         'bbox_y': grid_ys[1],
